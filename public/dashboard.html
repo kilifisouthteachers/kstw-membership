@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .logout-btn {
+            float: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Dashboard</h1>
+        <button class="logout-btn" onclick="window.location.href='/logout'">Logout</button>
+        <p>Welcome to your dashboard!</p>
+        <h2>Your Contributions</h2>
+        <table id="contributions-table" border="1">
+            <thead>
+                <tr>
+                    <th>Contribution ID</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+        
+            </tbody>
+        </table>
+    </div>
+    <script>
+    
+        fetch('/api/contributions')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('contributions-table').getElementsByTagName('tbody')[0];
+                data.forEach(contribution => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${contribution.id}</td><td>${contribution.amount}</td><td>${new Date(contribution.createdAt).toLocaleString()}</td>`;
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error fetching contributions:', error));
+    </script>
+</body>
+</html>

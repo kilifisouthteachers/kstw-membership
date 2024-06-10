@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register</title>
+  <style>
+    .centered-label {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .form-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-container button {
+      margin: 5px;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1 class="centered-label">Register</h1>
+    <form id="registerForm" action="/register" method="POST">
+      <div class="form-group">
+        <label for="fullName">Full Name:</label>
+        <input type="text" id="fullName" name="fullName" required>
+      </div>
+      <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <span id="username-error" class="error"></span>
+      </div>
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label for="cluster">Cluster:</label>
+        <input type="text" id="cluster" name="cluster">
+      </div>
+      <div class="form-group">
+        <label for="institution">Institution:</label>
+        <input type="text" id="institution" name="institution">
+      </div>
+      <div class="error" id="error-message"></div>
+      <button type="submit">Register</button>
+    </form>
+    <button onclick="location.href='/login'">Login</button>
+    <button onclick="location.href='/forgot-password'">Forgot Password</button>
+  </div>
+  <script>
+    document.getElementById('username').addEventListener('blur', async function(event) {
+      const username = event.target.value;
+      const usernameError = document.getElementById('username-error');
+
+      const response = await fetch(`/check-username?username=${username}`);
+      if (response.status === 400) {
+        const result = await response.json();
+        usernameError.textContent = result.message;
+      } else {
+        usernameError.textContent = '';
+      }
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const form = event.target;
+      const data = new FormData(form);
+      const object = {};
+      data.forEach((value, key) => object[key] = value);
+      const json = JSON.stringify(object);
+
+      const response = await fetch('/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: json
+      });
+
+      const result = await response.json();
+      const errorMessage = document.getElementById('error-message');
+
+      if (response.status === 201) {
+        window.location.href = result.redirectUrl;
+      } else {
+        errorMessage.textContent = result.message;
+        if (result.errors) {
+          errorMessage.innerHTML = result.errors.map(err => `<p>${err.field}: ${err.message}</p>`).join('');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

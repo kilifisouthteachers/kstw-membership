@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        .centered-label {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1 class="centered-label">Login</h1>
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="membershipNumber">Membership Number</label>
+                <input type="text" id="membershipNumber" name="membershipNumber"><br><br>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required><br><br>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>

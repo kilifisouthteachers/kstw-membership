@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contribution</title>
+    <style>
+        .centered-label {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1 class="centered-label">Contribution</h1>
+        <form action="/contribution" method="POST">
+            <div class="form-group">
+                <label for="amount">Amount</label>
+                <input type="number" id="amount" name="amount" required>
+            </div>
+            <div class="form-group">
+                <label for="reason">Reason</label>
+                <input type="text" id="reason" name="reason" required>
+            </div>
+            <button type="submit">Submit Contribution</button>
+        </form>
+    </div>
+</body>
+</html>

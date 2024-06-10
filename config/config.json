@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "root",
+    "password": "Kkk24041980#",
+    "database": "kstw_development",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "root",
+    "password": "your_password",
+    "database": "kstw_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "root",
+    "password": "Kkk24041980#",
+    "database": "kstw_production",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}
