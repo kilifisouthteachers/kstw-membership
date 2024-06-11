@@ -151,13 +151,12 @@ app.get('/register', (req, res) => {
 app.get('/login', (req, res) => {
   res.sendFile(__dirname + '/public/login.html');
 });
+
 app.get('/contribution', (req, res) => {
-  
   res.sendFile(path.join(__dirname, '/public/contribution.html'));
 });
 
 app.get('/dashboard', (req, res) => {
-  
   res.sendFile(path.join(__dirname, '/public/dashboard.html'));
 });
 
@@ -169,7 +168,7 @@ async function sendResetEmail(email, token) {
   const transporter = nodemailer.createTransport({
     host: 'smtp.mail.yahoo.com',
     port: 465,
-    secure: true, 
+    secure: true,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -197,7 +196,7 @@ app.post('/forgot-password', async (req, res) => {
     const user = await User.findOne({ where: { email } });
     if (user) {
       const token = crypto.randomBytes(20).toString('hex');
-      const tokenExpires = new Date(Date.now() + 3600000); 
+      const tokenExpires = new Date(Date.now() + 3600000);
 
       await user.update({
         resetToken: token,
@@ -278,7 +277,7 @@ app.get('/export/pdf', async (req, res) => {
         Username: ${user.username}
         Email: ${user.email}
         Cluster: ${user.cluster}
-        Institution: ${user.institution}
+                Institution: ${user.institution}
         Membership Number: ${user.membershipNumber}
         Created At: ${user.createdAt}
         Updated At: ${user.updatedAt}
@@ -332,34 +331,3 @@ app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
 
-const express = require('express');
-const { dbName, dbUser, dbPassword, dbHost, emailUser, emailPass, port } = require('./config');
-
-const bcrypt = require('bcryptjs');
-
-app.post('/register', async (req, res) => {
-  try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    
-  } catch (error) {
-    
-  }
-});
-
-app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const user = await User.findOne({ where: { username } });
-    if (user && await bcrypt.compare(password, user.password)) {
-      
-    } else {
-      
-    }
-  } catch (error) {
-    
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
