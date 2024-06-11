@@ -2,7 +2,7 @@ const express = require('express');
 require('dotenv').config();
 const bodyParser = require('body-parser');
 const { Sequelize, DataTypes } = require('sequelize');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');  // Change here
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const fastcsv = require('fast-csv');
@@ -151,12 +151,13 @@ app.get('/register', (req, res) => {
 app.get('/login', (req, res) => {
   res.sendFile(__dirname + '/public/login.html');
 });
-
 app.get('/contribution', (req, res) => {
+  
   res.sendFile(path.join(__dirname, '/public/contribution.html'));
 });
 
 app.get('/dashboard', (req, res) => {
+  
   res.sendFile(path.join(__dirname, '/public/dashboard.html'));
 });
 
@@ -168,7 +169,7 @@ async function sendResetEmail(email, token) {
   const transporter = nodemailer.createTransport({
     host: 'smtp.mail.yahoo.com',
     port: 465,
-    secure: true,
+    secure: true, 
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -196,7 +197,7 @@ app.post('/forgot-password', async (req, res) => {
     const user = await User.findOne({ where: { email } });
     if (user) {
       const token = crypto.randomBytes(20).toString('hex');
-      const tokenExpires = new Date(Date.now() + 3600000);
+      const tokenExpires = new Date(Date.now() + 3600000); 
 
       await user.update({
         resetToken: token,
@@ -236,7 +237,7 @@ app.get('/export/excel', async (req, res) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Users');
 
-  worksheet.columns = [
+    worksheet.columns = [
     { header: 'Full Name', key: 'fullName', width: 20 },
     { header: 'Username', key: 'username', width: 20 },
     { header: 'Email', key: 'email', width: 30 },
@@ -277,7 +278,7 @@ app.get('/export/pdf', async (req, res) => {
         Username: ${user.username}
         Email: ${user.email}
         Cluster: ${user.cluster}
-                Institution: ${user.institution}
+        Institution: ${user.institution}
         Membership Number: ${user.membershipNumber}
         Created At: ${user.createdAt}
         Updated At: ${user.updatedAt}
@@ -330,4 +331,3 @@ app.post('/reset-password', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
-
