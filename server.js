@@ -331,3 +331,35 @@ app.post('/reset-password', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
+const express = require('express');
+const { dbName, dbUser, dbPassword, dbHost, emailUser, emailPass, port } = require('./config');
+
+const bcrypt = require('bcryptjs');
+
+app.post('/register', async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    
+  } catch (error) {
+    
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const user = await User.findOne({ where: { username } });
+    if (user && await bcrypt.compare(password, user.password)) {
+      
+    } else {
+      
+    }
+  } catch (error) {
+    
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
