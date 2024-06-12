@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -103,12 +104,16 @@
       const username = event.target.value;
       const usernameError = document.getElementById('username-error');
 
-      const response = await fetch(`/check-username?username=${username}`);
-      if (response.status === 400) {
+      try {
+        const response = await fetch(`/check-username?username=${username}`);
         const result = await response.json();
-        usernameError.textContent = result.message;
-      } else {
-        usernameError.textContent = '';
+        if (response.status === 400) {
+          usernameError.textContent = result.message;
+        } else {
+          usernameError.textContent = '';
+        }
+      } catch (error) {
+        console.error('Username validation error:', error);
       }
     });
 
@@ -120,24 +125,29 @@
       data.forEach((value, key) => object[key] = value);
       const json = JSON.stringify(object);
 
-      const response = await fetch('/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: json
-      });
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: json
+        });
 
-      const result = await response.json();
-      const errorMessage = document.getElementById('error-message');
+        const result = await response.json();
+        const errorMessage = document.getElementById('error-message');
 
-      if (response.status === 201) {
-        window.location.href = result.redirectUrl;
-      } else {
-        errorMessage.textContent = result.message;
-        if (result.errors) {
-          errorMessage.innerHTML = result.errors.map(err => `<p>${err.field}: ${err.message}</p>`).join('');
+        if (response.status === 201) {
+          window.location.href = result.redirectUrl;
+        } else {
+          errorMessage.textContent = result.message;
+          if (result.errors) {
+            errorMessage.innerHTML = result.errors.map(err => `<p>${err.field}: ${err.message}</p>`).join('');
+          }
         }
+      } catch (error) {
+        console.error('Registration error:', error);
+        document.getElementById('error-message').textContent = 'Registration failed. Please try again.';
       }
     });
   </script>

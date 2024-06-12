@@ -142,26 +142,28 @@ app.post('/login', async (req, res) => {
   }
 });
 
-app.use(express.static('public'));
+app.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (user) {
+      const token = crypto.randomBytes(20).toString('hex');
+      const tokenExpires = new Date(Date.now() + 3600000);
 
-app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'register.html'));
-});
+      await user.update({
+        resetToken: token,
+        resetTokenExpires: tokenExpires,
+      });
 
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.get('/contribution', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'contribution.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-app.get('/forgot-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
+      await sendResetEmail(email, token);
+      res.status(200).json({ message: 'Password reset email sent' });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Password reset request failed:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
 });
 
 async function sendResetEmail(email, token) {
@@ -190,27 +192,47 @@ async function sendResetEmail(email, token) {
   }
 }
 
-app.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
+app.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+
   try {
-    const user = await User.findOne({ where: { email } });
-    if (user) {
-      const token = crypto.randomBytes(20).toString('hex');
-      const tokenExpires = new Date(Date.now() + 3600000);
-
-      await user.update({
+    const user = await User.findOne({
+      where: {
         resetToken: token,
-        resetTokenExpires: tokenExpires,
-      });
+        resetTokenExpires: { [Sequelize.Op.gt]: new Date() }
+      }
+    });
 
-      await sendResetEmail(email, token);
-      res.status(200).json({ message: 'Password reset email sent' });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await user.update({
+      password: hashedPassword,
+      resetToken: null,
+      resetTokenExpires: null
+    });
+
+    res.status(200).json({ message: 'Password reset successful', redirectUrl: '/login' });
+  } catch (error) {
+    console.error('Password reset failed:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+
+app.get('/check-username', async (req, res) => {
+  const { username } = req.query;
+  try {
+    const user = await User.findOne({ where: { username } });
+    if (user) {
+      res.status(400).json({ message: 'Username is already taken' });
     } else {
-      res.status(404).json({ message: 'User not found' });
+      res.status(200).json({ message: 'Username is available' });
     }
   } catch (error) {
-    console.error('Password reset request failed:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -251,7 +273,7 @@ app.get('/export/excel', async (req, res) => {
     worksheet.addRow(user.get({ plain: true }));
   });
 
-  res.setHeader('Content-Disposition', 'attachment; filename="users.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="users.xlsx"');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
   await workbook.xlsx.write(res);
@@ -273,7 +295,7 @@ app.get('/export/pdf', async (req, res) => {
 
     users.forEach(user => {
       const userData = `
-                Full Name: ${user.fullName}
+        Full Name: ${user.fullName}
         Username: ${user.username}
         Email: ${user.email}
         Cluster: ${user.cluster}
@@ -293,51 +315,30 @@ app.get('/export/pdf', async (req, res) => {
   }
 });
 
+app.use(express.static('public'));
+
+app.get('/register', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'register.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/contribution', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'contribution.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/forgot-password', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
+});
+
 app.get('/reset-password', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
-});
-
-app.post('/reset-password', async (req, res) => {
-  const { token, password } = req.body;
-
-  try {
-    const user = await User.findOne({
-      where: {
-        resetToken: token,
-        resetTokenExpires: { [Sequelize.Op.gt]: new Date() }
-      }
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired token' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await user.update({
-      password: hashedPassword,
-      resetToken: null,
-      resetTokenExpires: null
-    });
-
-    res.status(200).json({ message: 'Password reset successful', redirectUrl: '/login' });
-  } catch (error) {
-    console.error('Password reset failed:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-app.get('/check-username', async (req, res) => {
-  const { username } = req.query;
-  try {
-    const user = await User.findOne({ where: { username } });
-    if (user) {
-      res.status(400).json({ message: 'Username is already taken' });
-    } else {
-      res.status(200).json({ message: 'Username is available' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
-  }
 });
 
 app.listen(port, () => {
