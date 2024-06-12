@@ -326,6 +326,19 @@ app.post('/reset-password', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+app.get('/check-username', async (req, res) => {
+  const { username } = req.query;
+  try {
+    const user = await User.findOne({ where: { username } });
+    if (user) {
+      res.status(400).json({ message: 'Username is already taken' });
+    } else {
+      res.status(200).json({ message: 'Username is available' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
