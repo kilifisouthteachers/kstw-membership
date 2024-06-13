@@ -116,6 +116,20 @@ app.post('/register', async (req, res) => {
   }
 });
 
+app.get('/check-username', async (req, res) => {
+  const { username } = req.query;
+  try {
+    const user = await User.findOne({ where: { username } });
+    if (user) {
+      res.status(400).json({ message: 'Username is already taken' });
+    } else {
+      res.status(200).json({ message: 'Username is available' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 app.post('/login', async (req, res) => {
   const { username, password, membershipNumber } = req.body;
   console.log('Login request body:', req.body);
@@ -222,20 +236,6 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
-app.get('/check-username', async (req, res) => {
-  const { username } = req.query;
-  try {
-    const user = await User.findOne({ where: { username } });
-    if (user) {
-      res.status(400).json({ message: 'Username is already taken' });
-    } else {
-      res.status(200).json({ message: 'Username is available' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
 app.get('/export/csv', async (req, res) => {
   const users = await User.findAll();
 
@@ -259,8 +259,7 @@ app.get('/export/excel', async (req, res) => {
   const worksheet = workbook.addWorksheet('Users');
 
   worksheet.columns = [
-    { header: 'Full Name', key: 'fullName', width: 20 },
-    { header: 'Username', key: 'username', width: 20 },
+        { header: 'Username', key: 'username', width: 20 },
     { header: 'Email', key: 'email', width: 30 },
     { header: 'Cluster', key: 'cluster', width: 20 },
     { header: 'Institution', key: 'institution', width: 20 },
@@ -273,7 +272,7 @@ app.get('/export/excel', async (req, res) => {
     worksheet.addRow(user.get({ plain: true }));
   });
 
-    res.setHeader('Content-Disposition', 'attachment; filename="users.xlsx"');
+  res.setHeader('Content-Disposition', 'attachment; filename="users.xlsx"');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
   await workbook.xlsx.write(res);
