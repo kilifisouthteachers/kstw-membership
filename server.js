@@ -19,7 +19,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
   host: process.env.DB_HOST,
-  dialect: 'mysql'
+  dialect: 'mysql',
+  logging: console.log
 });
 
 sequelize.authenticate()
@@ -113,20 +114,6 @@ app.post('/register', async (req, res) => {
     } else {
       res.status(500).json({ message: 'Registration failed', error: error.message });
     }
-  }
-});
-
-app.get('/check-username', async (req, res) => {
-  const { username } = req.query;
-  try {
-    const user = await User.findOne({ where: { username } });
-    if (user) {
-      res.status(400).json({ message: 'Username is already taken' });
-    } else {
-      res.status(200).json({ message: 'Username is available' });
-    }
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -236,6 +223,20 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
+app.get('/check-username', async (req, res) => {
+  const { username } = req.query;
+  try {
+    const user = await User.findOne({ where: { username } });
+    if (user) {
+      res.status(400).json({ message: 'Username is already taken' });
+    } else {
+      res.status(200).json({ message: 'Username is available' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 app.get('/export/csv', async (req, res) => {
   const users = await User.findAll();
 
@@ -259,12 +260,13 @@ app.get('/export/excel', async (req, res) => {
   const worksheet = workbook.addWorksheet('Users');
 
   worksheet.columns = [
-        { header: 'Username', key: 'username', width: 20 },
+    { header: 'Full Name', key: 'fullName', width: 20 },
+    { header: 'Username', key: 'username', width: 20 },
     { header: 'Email', key: 'email', width: 30 },
     { header: 'Cluster', key: 'cluster', width: 20 },
     { header: 'Institution', key: 'institution', width: 20 },
     { header: 'Membership Number', key: 'membershipNumber', width: 30 },
-    { header: 'Created At', key: 'createdAt', width: 20 },
+        { header: 'Created At', key: 'createdAt', width: 20 },
     { header: 'Updated At', key: 'updatedAt', width: 20 }
   ];
 
