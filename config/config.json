@@ -4,7 +4,13 @@
     "password": "Kkk24041980#",
     "database": "kstw_development",
     "host": "127.0.0.1",
-    "dialect": "mysql"
+    "dialect": "mysql",
+    "migrationStorage": "json",
+    "migrationStoragePath": "sequelize-meta.json",
+    "migrationStorageTableName": "SequelizeMeta",
+    "define": {
+      "underscored": true
+    }
   },
   "test": {
     "username": "root",

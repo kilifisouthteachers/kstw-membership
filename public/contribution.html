@@ -1,38 +1,204 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Contribution</title>
-    <style>
-        .centered-label {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .form-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Make a Contribution</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .form-container, .table-container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      width: 300px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .form-container h1, .table-container h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+      width: 100%;
+    }
+    label {
+      margin-bottom: 5px;
+      text-align: center;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 100%;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #5cb85c;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #4cae4c;
+    }
+    .error {
+      color: red;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+  </style>
 </head>
 <body>
-    <div class="form-container">
-        <h1 class="centered-label">Contribution</h1>
-        <form action="/contribution" method="POST">
-            <div class="form-group">
-                <label for="amount">Amount</label>
-                <input type="number" id="amount" name="amount" required>
-            </div>
-            <div class="form-group">
-                <label for="reason">Reason</label>
-                <input type="text" id="reason" name="reason" required>
-            </div>
-            <button type="submit">Submit Contribution</button>
-        </form>
-    </div>
+  <div class="form-container">
+    <h1>Make a Contribution</h1>
+    <form id="contribution-form">
+      <div class="form-group">
+        <label for="amount">Amount:</label>
+        <input type="number" id="amount" name="amount" required>
+      </div>
+      <div class="form-group">
+        <label for="description">Description:</label>
+        <input type="text" id="description" name="description">
+      </div>
+      <div class="form-group">
+        <label for="membershipNumber">Your Membership Number:</label>
+        <input type="text" id="membershipNumber" name="membershipNumber" required>
+      </div>
+      <div class="form-group">
+        <label for="recipientMembershipNumber">Recipient Membership Number:</label>
+        <input type="text" id="recipientMembershipNumber" name="recipientMembershipNumber" required>
+      </div>
+      <div class="error" id="error-message"></div>
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+
+  <div class="table-container">
+    <h1>User Contributions</h1>
+    <table id="contributions-table">
+      <thead>
+        <tr>
+          <th>Full Name</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Membership Number</th>
+          <th>Created At</th>
+          <th>Updated At</th>
+          <th>Contribution Amount</th>
+          <th>Contribution Description</th>
+          <th>Recipient Membership Number</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Contributions will be inserted here -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    document.getElementById('contribution-form').addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      const amount = document.getElementById('amount').value;
+      const description = document.getElementById('description').value;
+      const membershipNumber = document.getElementById('membershipNumber').value;
+      const recipientMembershipNumber = document.getElementById('recipientMembershipNumber').value;
+
+      try {
+        const response = await fetch('http://localhost:3000/contribution', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ amount, description, membershipNumber, recipientMembershipNumber })
+        });
+
+        const result = await response.json();
+        if (response.status === 201) {
+          alert('Contribution successful: ' + JSON.stringify(result.contribution));
+          addContributionToTable(result.contribution);
+        } else {
+          document.getElementById('error-message').textContent = 'Error: ' + result.message;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('error-message').textContent = 'Error: ' + error.message;
+      }
+    });
+
+    function addContributionToTable(contribution) {
+      const tableBody = document.getElementById('contributions-table').querySelector('tbody');
+      const row = document.createElement('tr');
+
+      const fullNameCell = document.createElement('td');
+      fullNameCell.textContent = contribution.fullName;
+      row.appendChild(fullNameCell);
+
+      const usernameCell = document.createElement('td');
+      usernameCell.textContent = contribution.username;
+      row.appendChild(usernameCell);
+
+      const emailCell = document.createElement('td');
+      emailCell.textContent = contribution.email;
+      row.appendChild(emailCell);
+
+      const membershipNumberCell = document.createElement('td');
+      membershipNumberCell.textContent = contribution.membershipNumber;
+      row.appendChild(membershipNumberCell);
+
+      const createdAtCell = document.createElement('td');
+      createdAtCell.textContent = contribution.createdAt;
+      row.appendChild(createdAtCell);
+
+      const updatedAtCell = document.createElement('td');
+      updatedAtCell.textContent = contribution.updatedAt;
+      row.appendChild(updatedAtCell);
+
+      const amountCell = document.createElement('td');
+      amountCell.textContent = contribution.amount;
+      row.appendChild(amountCell);
+
+      const descriptionCell = document.createElement('td');
+      descriptionCell.textContent = contribution.description;
+      row.appendChild(descriptionCell);
+
+      const recipientMembershipNumberCell = document.createElement('td');
+      recipientMembershipNumberCell.textContent = contribution.recipientMembershipNumber;
+      row.appendChild(recipientMembershipNumberCell);
+
+      tableBody.appendChild(row);
+    }
+  </script>
 </body>
 </html>
