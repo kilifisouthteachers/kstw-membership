@@ -4,7 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { Sequelize, DataTypes } = require('sequelize');
 const nodemailer = require('nodemailer');
-const argon2 = require('argon2'); // Replace bcrypt with argon2
+const argon2 = require('argon2'); 
 const crypto = require('crypto');
 const fastcsv = require('fast-csv');
 const ExcelJS = require('exceljs');
@@ -92,12 +92,14 @@ async function sendResetEmail(email, token, port) {
 
 app.post('/register', async (req, res) => {
   try {
+    console.log('Received registration request:', req.body);
     const { fullName, username, password, email } = req.body;
     if (!fullName || !username || !password || !email) {
       return res.status(400).json({ message: 'All fields are required' });
     }
-    const hashedPassword = await argon2.hash(password); // Use argon2 for hashing
+    const hashedPassword = await argon2.hash(password);
     const membershipNumber = await generateMembershipNumber();
+    console.log('Generated membership number:', membershipNumber);
     const newUser = await User.create({ fullName, username, password: hashedPassword, email, membershipNumber });
     res.status(201).json({ message: 'Registration successful', membershipNumber });
   } catch (error) {
@@ -106,6 +108,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+
 app.post('/login', async (req, res) => {
   try {
     const { username, password, membershipNumber } = req.body;
@@ -113,7 +116,7 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Username/Membership Number and password are required' });
     }
     const user = await User.findOne({ where: username ? { username } : { membershipNumber } });
-    if (user && await argon2.verify(user.password, password)) { // Use argon2 for verifying password
+    if (user && await argon2.verify(user.password, password)) { 
       res.status(200).json({ message: 'Login successful', redirectUrl: '/contribution' });
     } else {
       res.status(401).json({ message: 'Invalid username/membership number or password' });
@@ -186,7 +189,7 @@ app.post('/reset-password', async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
-    const hashedPassword = await argon2.hash(password); // Use argon2 for hashing
+    const hashedPassword = await argon2.hash(password);
     await user.update({ password: hashedPassword, resetToken: null, resetTokenExpires: null });
     res.status(200).json({ message: 'Password reset successful', redirectUrl: '/login' });
   } catch (error) {
@@ -355,7 +358,7 @@ app.get('/create-test-user', async (req, res) => {
     const testUser = await User.create({
       fullName: 'Test User',
       username: 'testuser',
-      password: await argon2.hash('password'), // Use argon2 for hashing
+      password: await argon2.hash('password'), 
       email: 'testuser@example.com',
       membershipNumber: await generateMembershipNumber()
     });
@@ -407,4 +410,3 @@ app.get('/reset-password', (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
-
