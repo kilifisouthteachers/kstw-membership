@@ -1,5 +1,4 @@
 require('dotenv').config();
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Sequelize, DataTypes } = require('sequelize');
@@ -11,6 +10,14 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const cors = require('cors');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(cors()); // Enable CORS
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
   host: process.env.DB_HOST,
@@ -43,13 +50,6 @@ sequelize.sync({ alter: true }).then(() => {
 }).catch(err => {
   console.error('Unable to synchronize the database:', err);
 });
-
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
 async function generateMembershipNumber() {
   const prefix = 'KSTW';
@@ -97,17 +97,15 @@ app.post('/register', async (req, res) => {
       console.log('Missing required fields:', req.body);
       return res.status(400).json({ message: 'All fields are required' });
     }
-    const hashedPassword = await argon2.hash(password);
+    const hashedPassword = await argon2.hash(password); // Use argon2 for hashing
     const membershipNumber = await generateMembershipNumber();
     const newUser = await User.create({ fullName, username, password: hashedPassword, email, membershipNumber });
     res.status(201).json({ message: 'Registration successful', membershipNumber });
   } catch (error) {
     console.error('Registration failed:', error);
-    console.error('Request body:', req.body); 
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
-
 
 app.post('/login', async (req, res) => {
   try {
@@ -178,234 +176,111 @@ app.post('/forgot-password', async (req, res) => {
     }
   } catch (error) {
     console.error('Password reset request failed:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    res.status(500).json({ message: 'Internal server    error', error: error.message });
   }
 });
 
 app.post('/reset-password', async (req, res) => {
   try {
-    const { token, password } = req.body;
-    const user = await User.findOne({ where: { resetToken: token, resetTokenExpires: { [Sequelize.Op.gt]: new Date() } } });
+    const { token, newPassword } = req.body;
+    const user = await User.findOne({
+      where: {
+        resetToken: token,
+        resetTokenExpires: { [Sequelize.Op.gt]: new Date() }
+      }
+    });
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
-    const hashedPassword = await argon2.hash(password); // Use argon2 for hashing
+    const hashedPassword = await argon2.hash(newPassword); // Use argon2 for hashing
     await user.update({ password: hashedPassword, resetToken: null, resetTokenExpires: null });
-    res.status(200).json({ message: 'Password reset successful', redirectUrl: '/login' });
+    res.status(200).json({ message: 'Password reset successful' });
   } catch (error) {
     console.error('Password reset failed:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
-app.get('/check-username', async (req, res) => {
+// Additional endpoints for downloading contributions in different formats
+app.get('/contributions/csv', async (req, res) => {
   try {
-    const { username } = req.query;
-    const user = await User.findOne({ where: { username } });
-    res.status(user ? 400 : 200).json({ message: user ? 'Username is already taken' : 'Username is available' });
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-app.get('/user/:id', async (req, res) => {
-  try {
-    const user = await User.findByPk(req.params.id);
-    if (user) {
-      res.status(200).json(user);
-    } else {
-      res.status(404).json({ message: 'User not found' });
-    }
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-app.get('/export/csv', async (req, res) => {
-  try {
-    const users = await User.findAll();
+    const contributions = await Contribution.findAll();
     const csvStream = fastcsv.format({ headers: true });
-    res.setHeader('Content-Disposition', 'attachment; filename="users.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename=contributions.csv');
     res.setHeader('Content-Type', 'text/csv');
     csvStream.pipe(res);
-    users.forEach(user => csvStream.write(user.get({ plain: true })));
+    contributions.forEach(contribution => {
+      csvStream.write(contribution.toJSON());
+    });
     csvStream.end();
   } catch (error) {
-    console.error('Error exporting CSV:', error);
+    console.error('CSV download failed:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
-
-app.get('/export/excel', async (req, res) => {
+app.get('/contributions/excel', async (req, res) => {
   try {
-    const users = await User.findAll({
-      include: [{ model: Contribution }]
-    });
-
+    const contributions = await Contribution.findAll();
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Users with Contributions');
-    
+    const worksheet = workbook.addWorksheet('Contributions');
     worksheet.columns = [
-      { header: 'Full Name', key: 'fullName', width: 20 },
-      { header: 'Username', key: 'username', width: 20 },
-      { header: 'Email', key: 'email', width: 30 },
-      { header: 'Membership Number', key: 'membershipNumber', width: 30 },
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Amount', key: 'amount', width: 10 },
+      { header: 'Description', key: 'description', width: 30 },
+      { header: 'Recipient Membership Number', key: 'recipientMembershipNumber', width: 20 },
+      { header: 'User ID', key: 'userId', width: 10 },
       { header: 'Created At', key: 'createdAt', width: 20 },
-      { header: 'Updated At', key: 'updatedAt', width: 20 },
-      { header: 'Contribution Amount', key: 'contributionAmount', width: 20 },
-      { header: 'Contribution Description', key: 'contributionDescription', width: 30 },
-      { header: 'Contribution Date', key: 'contributionDate', width: 20 },
-      { header: 'Recipient Membership Number', key: 'recipientMembershipNumber', width: 30 }
+      { header: 'Updated At', key: 'updatedAt', width: 20 }
     ];
-
-    users.forEach(user => {
-      const userData = {
-        fullName: user.fullName,
-        username: user.username,
-        email: user.email,
-        membershipNumber: user.membershipNumber,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      };
-
-      if (user.Contributions.length > 0) {
-        user.Contributions.forEach(contribution => {
-          worksheet.addRow({
-            ...userData,
-            contributionAmount: contribution.amount,
-            contributionDescription: contribution.description,
-            contributionDate: contribution.createdAt,
-            recipientMembershipNumber: contribution.recipientMembershipNumber
-          });
-        });
-      } else {
-        worksheet.addRow(userData);
-      }
+    contributions.forEach(contribution => {
+      worksheet.addRow(contribution.toJSON());
     });
-
-    res.setHeader('Content-Disposition', 'attachment; filename="users_with_contributions.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename=contributions.xlsx');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error('Error exporting Excel:', error);
+    console.error('Excel download failed:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
-
-app.get('/export/pdf', async (req, res) => {
+app.get('/contributions/pdf', async (req, res) => {
   try {
-    const users = await User.findAll({
-      include: [{ model: Contribution }]
-    });
-
+    const contributions = await Contribution.findAll();
     const doc = new PDFDocument();
-    res.setHeader('Content-Disposition', 'attachment; filename="users_with_contributions.pdf"');
+    res.setHeader('Content-Disposition', 'attachment; filename=contributions.pdf');
     res.setHeader('Content-Type', 'application/pdf');
-
     doc.pipe(res);
-
-    doc.fontSize(20).text('Users List with Contributions', { align: 'center' });
+    doc.fontSize(12).text('Contributions', { align: 'center' });
     doc.moveDown();
-
-    users.forEach(user => {
-      const userData = `
-        Full Name: ${user.fullName}
-        Username: ${user.username}
-        Email: ${user.email}
-        Membership Number: ${user.membershipNumber}
-        Created At: ${user.createdAt}
-        Updated At: ${user.updatedAt}
-      `;
-      doc.fontSize(12).text(userData, { align: 'left' });
+    contributions.forEach(contribution => {
+      doc.text(`ID: ${contribution.id}`);
+      doc.text(`Amount: ${contribution.amount}`);
+      doc.text(`Description: ${contribution.description}`);
+      doc.text(`Recipient Membership Number: ${contribution.recipientMembershipNumber}`);
+      doc.text(`User ID: ${contribution.userId}`);
+      doc.text(`Created At: ${contribution.createdAt}`);
+      doc.text(`Updated At: ${contribution.updatedAt}`);
       doc.moveDown();
-
-      if (user.Contributions.length > 0) {
-        user.Contributions.forEach(contribution => {
-          const contributionData = `
-            Contribution Amount: ${contribution.amount}
-            Description: ${contribution.description}
-            Date: ${contribution.createdAt}
-            Recipient Membership Number: ${contribution.recipientMembershipNumber}
-          `;
-          doc.fontSize(10).text(contributionData, { align: 'left' });
-          doc.moveDown();
-        });
-      }
     });
-
     doc.end();
   } catch (error) {
-    console.error('Error exporting PDF:', error);
+    console.error('PDF download failed:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 
+// Test endpoint to verify database connection
 app.get('/test-db', async (req, res) => {
   try {
     await sequelize.authenticate();
     res.status(200).json({ message: 'Database connection successful' });
   } catch (error) {
+    console.error('Database connection failed:', error);
     res.status(500).json({ message: 'Database connection failed', error: error.message });
   }
-});
-
-app.get('/create-test-user', async (req, res) => {
-  try {
-    const testUser = await User.create({
-      fullName: 'Test User',
-      username: 'testuser',
-      password: await argon2.hash('password'), // Use argon2 for hashing
-      email: 'testuser@example.com',
-      membershipNumber: await generateMembershipNumber()
-    });
-    res.status(201).json({ message: 'Test user created', user: testUser });
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating test user', error: error.message });
-  }
-});
-
-
-app.get('/users-contributions', async (req, res) => {
-  try {
-    const users = await User.findAll({
-      include: [{ model: Contribution }]
-    });
-    res.status(200).json(users);
-  } catch (error) {
-    console.error('Error fetching users with contributions:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-app.use(express.static('public'));
-
-app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'register.html'));
-});
-
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.get('/contribution', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'contribution.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-app.get('/forgot-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
-});
-
-app.get('/reset-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
 });
 
 app.listen(port, () => {
