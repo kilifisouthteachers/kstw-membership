@@ -11,6 +11,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const favicon = require('serve-favicon');
 
 const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
   host: process.env.DB_HOST,
@@ -44,12 +45,15 @@ sequelize.sync({ alter: true }).then(() => {
   console.error('Unable to synchronize the database:', err);
 });
 
-
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 async function generateMembershipNumber() {
   const prefix = 'KSTW';
@@ -90,11 +94,11 @@ async function sendResetEmail(email, token, port) {
   }
 }
 
+
 app.post('/register', async (req, res) => {
   try {
     const { fullName, username, password, email } = req.body;
     if (!fullName || !username || !password || !email) {
-      console.log('Missing required fields:', req.body);
       return res.status(400).json({ message: 'All fields are required' });
     }
     const hashedPassword = await argon2.hash(password);
@@ -106,7 +110,6 @@ app.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
-
 
 app.post('/login', async (req, res) => {
   try {
@@ -221,168 +224,6 @@ app.get('/user/:id', async (req, res) => {
   }
 });
 
-app.get('/export/csv', async (req, res) => {
-  try {
-    const users = await User.findAll();
-    const csvStream = fastcsv.format({ headers: true });
-    res.setHeader('Content-Disposition', 'attachment; filename="users.csv"');
-    res.setHeader('Content-Type', 'text/csv');
-    csvStream.pipe(res);
-    users.forEach(user => csvStream.write(user.get({ plain: true })));
-    csvStream.end();
-  } catch (error) {
-    console.error('Error exporting CSV:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-
-app.get('/export/excel', async (req, res) => {
-  try {
-    const users = await User.findAll({
-      include: [{ model: Contribution }]
-    });
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Users with Contributions');
-    
-    worksheet.columns = [
-      { header: 'Full Name', key: 'fullName', width: 20 },
-      { header: 'Username', key: 'username', width: 20 },
-      { header: 'Email', key: 'email', width: 30 },
-      { header: 'Membership Number', key: 'membershipNumber', width: 30 },
-      { header: 'Created At', key: 'createdAt', width: 20 },
-      { header: 'Updated At', key: 'updatedAt', width: 20 },
-      { header: 'Contribution Amount', key: 'contributionAmount', width: 20 },
-      { header: 'Contribution Description', key: 'contributionDescription', width: 30 },
-      { header: 'Contribution Date', key: 'contributionDate', width: 20 },
-      { header: 'Recipient Membership Number', key: 'recipientMembershipNumber', width: 30 }
-    ];
-
-    users.forEach(user => {
-      const userData = {
-        fullName: user.fullName,
-        username: user.username,
-        email: user.email,
-        membershipNumber: user.membershipNumber,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      };
-
-      if (user.Contributions.length > 0) {
-        user.Contributions.forEach(contribution => {
-          worksheet.addRow({
-            ...userData,
-            contributionAmount: contribution.amount,
-            contributionDescription: contribution.description,
-            contributionDate: contribution.createdAt,
-            recipientMembershipNumber: contribution.recipientMembershipNumber
-          });
-        });
-      } else {
-        worksheet.addRow(userData);
-      }
-    });
-
-    res.setHeader('Content-Disposition', 'attachment; filename="users_with_contributions.xlsx"');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (error) {
-    console.error('Error exporting Excel:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-
-app.get('/export/pdf', async (req, res) => {
-  try {
-    const users = await User.findAll({
-      include: [{ model: Contribution }]
-    });
-
-    const doc = new PDFDocument();
-    res.setHeader('Content-Disposition', 'attachment; filename="users_with_contributions.pdf"');
-    res.setHeader('Content-Type', 'application/pdf');
-
-    doc.pipe(res);
-
-    doc.fontSize(20).text('Users List with Contributions', { align: 'center' });
-    doc.moveDown();
-
-    users.forEach(user => {
-      const userData = `
-        Full Name: ${user.fullName}
-        Username: ${user.username}
-        Email: ${user.email}
-        Membership Number: ${user.membershipNumber}
-        Created At: ${user.createdAt}
-        Updated At: ${user.updatedAt}
-      `;
-      doc.fontSize(12).text(userData, { align: 'left' });
-      doc.moveDown();
-
-      if (user.Contributions.length > 0) {
-        user.Contributions.forEach(contribution => {
-          const contributionData = `
-            Contribution Amount: ${contribution.amount}
-            Description: ${contribution.description}
-            Date: ${contribution.createdAt}
-            Recipient Membership Number: ${contribution.recipientMembershipNumber}
-          `;
-          doc.fontSize(10).text(contributionData, { align: 'left' });
-          doc.moveDown();
-        });
-      }
-    });
-
-    doc.end();
-  } catch (error) {
-    console.error('Error exporting PDF:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-app.get('/test-db', async (req, res) => {
-  try {
-    await sequelize.authenticate();
-    res.status(200).json({ message: 'Database connection successful' });
-  } catch (error) {
-    res.status(500).json({ message: 'Database connection failed', error: error.message });
-  }
-});
-
-app.get('/create-test-user', async (req, res) => {
-  try {
-    const testUser = await User.create({
-      fullName: 'Test User',
-      username: 'testuser',
-      password: await argon2.hash('password'),
-      email: 'testuser@example.com',
-      membershipNumber: await generateMembershipNumber()
-    });
-    res.status(201).json({ message: 'Test user created', user: testUser });
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating test user', error: error.message });
-  }
-});
-
-
-app.get('/users-contributions', async (req, res) => {
-  try {
-    const users = await User.findAll({
-      include: [{ model: Contribution }]
-    });
-    res.status(200).json(users);
-  } catch (error) {
-    console.error('Error fetching users with contributions:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-app.use(express.static('public'));
-
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
@@ -407,6 +248,18 @@ app.get('/reset-password', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
 });
 
+app.use((req, res, next) => {
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).sendFile(path.join(__dirname, 'public', '500.html'));
+});
+
+
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
