@@ -146,7 +146,7 @@ app.post('/contribution', async (req, res) => {
       recipientMembershipNumber
     });
 
-    res.status(201).json({ message     : 'Contribution successful', contribution });
+    res.status(201).json({ message: 'Contribution successful', contribution });
   } catch (error) {
     console.error('Contribution failed:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
@@ -407,3 +407,4 @@ app.get('/reset-password', (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
