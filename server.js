@@ -103,6 +103,7 @@ app.post('/register', async (req, res) => {
     res.status(201).json({ message: 'Registration successful', membershipNumber });
   } catch (error) {
     console.error('Registration failed:', error);
+    console.error('Request body:', req.body); 
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
